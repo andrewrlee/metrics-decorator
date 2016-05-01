@@ -6,16 +6,23 @@ import java.lang.reflect.Method;
 import java.util.Optional;
 
 import uk.co.optimisticpanda.metricsdecorator.Interceptor;
+import uk.co.optimisticpanda.metricsdecorator.InterceptorHandlerFactory.InterceptorFactory;
 
 import com.codahale.metrics.MetricRegistry;
 
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Metered {
-    public class MeteredInterceptor implements Interceptor {
-        private MetricRegistry registry;
+    public class MeteredInterceptor implements Interceptor<Metered> {
+        private final MetricRegistry registry;
+        private final Metered metered;
 
-        public MeteredInterceptor(MetricRegistry metricRegistry) {
-            registry = metricRegistry;
+        public static InterceptorFactory factory(MetricRegistry metricRegistry) {
+            return (annotation, delegate) -> new MeteredInterceptor((Metered) annotation, metricRegistry);
+        }
+        
+        private MeteredInterceptor(Metered metered, MetricRegistry metricRegistry) {
+            this.metered = metered;
+            this.registry = metricRegistry;
         }
 
         @Override

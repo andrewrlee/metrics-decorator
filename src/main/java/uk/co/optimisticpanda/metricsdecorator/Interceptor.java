@@ -1,9 +1,10 @@
 package uk.co.optimisticpanda.metricsdecorator;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.Optional;
 
-public interface Interceptor {
+public interface Interceptor<T extends Annotation> {
     default Optional<Object> onBefore(Object delegate, Method method) throws Exception {
         return Optional.empty();
     }

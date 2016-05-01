@@ -22,8 +22,8 @@ public class MetricsDecorator {
     
     public MetricsDecorator(MetricRegistry metricRegistry) {
         this.factory = new InterceptorHandlerFactory()
-            .register(Metered.class, delegate -> new MeteredInterceptor(metricRegistry))
-            .register(Timer.class, delegate -> new TimerInterceptor(metricRegistry));
+            .register(Metered.class, MeteredInterceptor.factory(metricRegistry))
+            .register(Timer.class, TimerInterceptor.factory(metricRegistry));
     }
 
     public <T> T decorate(T delegate) {

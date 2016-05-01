@@ -18,12 +18,12 @@ import net.bytebuddy.implementation.bind.annotation.Pipe;
 import net.bytebuddy.implementation.bind.annotation.RuntimeType;
 
 public class InterceptorHandlerFactory {
-    private final Map<Class<? extends Annotation>, Function<Object, ? extends Interceptor>> interceptorProviders = new HashMap<>();
+    private final Map<Class<? extends Annotation>, InterceptorFactory> interceptorProviders = new HashMap<>();
 
     public InterceptorHandlerFactory() {
     }
 
-    public InterceptorHandlerFactory register(Class<? extends Annotation> type, Function<Object, ? extends Interceptor> supplier) {
+    public <T extends Annotation> InterceptorHandlerFactory register(Class<T> type, InterceptorFactory supplier) {
         interceptorProviders.put(type, supplier);
         return this;
     }
@@ -37,11 +37,11 @@ public class InterceptorHandlerFactory {
     }
 
     public static class InterceptorHandler {
-        private final Map<Class<? extends Annotation>, Function<Object, ? extends Interceptor>> interceptorFactories;
-        private final ConcurrentHashMap<Class<? extends Annotation>, Interceptor> allInterceptors = new ConcurrentHashMap<>();
+        private final Map<Class<? extends Annotation>, InterceptorFactory> interceptorFactories;
+        private final ConcurrentHashMap<Class<? extends Annotation>, Interceptor<? extends Annotation>> allInterceptors = new ConcurrentHashMap<>();
         private final Object delegate;
 
-        private InterceptorHandler(Map<Class<? extends Annotation>, Function<Object, ? extends Interceptor>> interceptorProviders, Object delegate) {
+        private InterceptorHandler(Map<Class<? extends Annotation>, InterceptorFactory> interceptorProviders, Object delegate) {
             this.interceptorFactories = interceptorProviders;
             this.delegate = delegate;
         }
@@ -67,19 +67,47 @@ public class InterceptorHandlerFactory {
             }
         }
 
-        @SuppressWarnings("unchecked")
         private Interceptors gatherInterceptors(Method method) {
             return stream(method.getAnnotations())
-                    .map(Object::getClass)
-                    .flatMap(a-> stream(a.getInterfaces()))
-                    .map(a -> (Class<? extends Annotation>) a)
-                    .filter(clazz -> interceptorFactories.containsKey(clazz))
-                    .map(clazz -> allInterceptors.computeIfAbsent(clazz, createInterceptor(delegate)))
+                    .<AnnotationInfo>flatMap(a-> stream(a.getClass().getInterfaces()).map(iClass -> new AnnotationInfo(a, iClass)))
+                    .filter(a -> interceptorFactories.containsKey(a.getRealType()))
+                    .map(a -> createInterceptor(a, delegate))
                     .collect(collectingAndThen(toList(), Interceptors::new));
         }
 
-        private Function<Class<? extends Annotation>, ? extends Interceptor> createInterceptor(Object delegate) {
-            return annotation -> interceptorFactories.get(annotation).apply(delegate);
+        private Interceptor<? extends Annotation> createInterceptor(AnnotationInfo info, Object delegate) {
+            Function<Class<? extends Annotation>, Interceptor<? extends Annotation>> f = annotation -> {
+                InterceptorFactory factory = interceptorFactories.get(annotation);
+                Annotation ann = info.getAnnotation();
+                return factory.build(ann, delegate);
+            };
+            Interceptor<? extends Annotation> interceptor = allInterceptors.computeIfAbsent(info.getRealType(), f);
+            return interceptor;
+        }
+        
+    }
+    
+    public interface InterceptorFactory {
+        Interceptor<?> build(Annotation annotation, Object delegate);
+    }
+    
+    private static class AnnotationInfo {
+        private final Annotation annotation;
+        private final Class<? extends Annotation> realType;
+        
+        @SuppressWarnings("unchecked")
+        private AnnotationInfo(Annotation annotation, Class<?> realType) {
+            super();
+            this.annotation = annotation;
+            this.realType = (Class<? extends Annotation>) realType;
+        }
+        
+        public Class<? extends Annotation> getRealType() {
+            return realType;
+        }
+        
+        public Annotation getAnnotation() {
+            return annotation;
         }
     }
 }

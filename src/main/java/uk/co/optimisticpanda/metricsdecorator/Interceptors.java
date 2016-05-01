@@ -1,14 +1,15 @@
 package uk.co.optimisticpanda.metricsdecorator;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Optional;
 
-public class Interceptors implements Interceptor {
+public class Interceptors implements Interceptor<Annotation> {
     
-    private final List<Interceptor> interceptors;
+    private final List<Interceptor<? extends Annotation>> interceptors;
 
-    public Interceptors(List<Interceptor> interceptors) {
+    public Interceptors(List<Interceptor<? extends Annotation>> interceptors) {
         this.interceptors = interceptors;
     }
     
@@ -29,13 +30,13 @@ public class Interceptors implements Interceptor {
 
     @Override
     public void onFinally(Object delegate, Method method) {
-        for (Interceptor interceptor : interceptors) {
+        for (Interceptor<? extends Annotation> interceptor : interceptors) {
             interceptor.onFinally(delegate, method);
         }
     }
     
     private Optional<Object> forEach(ThrowingSupplier supplier) throws Exception {
-        for (Interceptor interceptor : interceptors) {
+        for (Interceptor<? extends Annotation> interceptor : interceptors) {
                 Optional<Object> result = supplier.perform(interceptor);
                 if (result.isPresent()) {
                     return result;
@@ -46,6 +47,6 @@ public class Interceptors implements Interceptor {
 
     @FunctionalInterface
     private interface ThrowingSupplier {
-        Optional<Object> perform(Interceptor interceptor) throws Exception;
+        Optional<Object> perform(Interceptor<? extends Annotation> interceptor) throws Exception;
     }
 }

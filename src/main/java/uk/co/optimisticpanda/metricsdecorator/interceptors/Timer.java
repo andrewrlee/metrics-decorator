@@ -6,18 +6,25 @@ import java.lang.reflect.Method;
 import java.util.Optional;
 
 import uk.co.optimisticpanda.metricsdecorator.Interceptor;
+import uk.co.optimisticpanda.metricsdecorator.InterceptorHandlerFactory.InterceptorFactory;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer.Context;
 
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Timer {
-    public class TimerInterceptor implements Interceptor{
-        private MetricRegistry registry;
+    public class TimerInterceptor implements Interceptor<Timer> {
+        private final MetricRegistry registry;
+        private final Timer timer;
         private Context context;
 
-        public TimerInterceptor(MetricRegistry metricRegistry) {
-            registry = metricRegistry;
+        public static InterceptorFactory factory(MetricRegistry metricRegistry) {
+            return (annotation, delegate) -> new TimerInterceptor((Timer)annotation, metricRegistry);
+        }
+        
+        private TimerInterceptor(Timer timer, MetricRegistry metricRegistry) {
+            this.timer = timer;
+            this.registry = metricRegistry;
         }
 
         @Override
