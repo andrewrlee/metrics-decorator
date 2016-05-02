@@ -1,4 +1,4 @@
-package uk.co.optimisticpanda.metricsdecorator;
+package uk.co.optimisticpanda.instrumentation;
 
 @FunctionalInterface
 public interface Piper {

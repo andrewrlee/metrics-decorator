@@ -1,4 +1,4 @@
-package uk.co.optimisticpanda.metricsdecorator;
+package uk.co.optimisticpanda.instrumentation;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;

@@ -1,9 +1,14 @@
-package uk.co.optimisticpanda.metricsdecorator;
+package uk.co.optimisticpanda.instrumentation.metrics;
+
+import static uk.co.optimisticpanda.instrumentation.metrics.Metered.Type.AFTER;
+import static uk.co.optimisticpanda.instrumentation.metrics.Metered.Type.BEFORE;
+import static uk.co.optimisticpanda.instrumentation.metrics.Metered.Type.EXCEPTION;
+import static uk.co.optimisticpanda.instrumentation.metrics.Metered.Type.FINALLY;
 
 import java.util.concurrent.TimeUnit;
 
-import uk.co.optimisticpanda.metricsdecorator.interceptors.Metered;
-import uk.co.optimisticpanda.metricsdecorator.interceptors.Timer;
+import uk.co.optimisticpanda.instrumentation.metrics.Metered;
+import uk.co.optimisticpanda.instrumentation.metrics.Timer;
 
 public class TestService {
 
@@ -22,13 +27,16 @@ public class TestService {
     }
     
     
-    @Metered
+    @Metered(when = BEFORE)
     public void doAVoidThing(int count) {
         publisher.accept(count);
     }
     
-    @Metered
-    public String returnGreeting() {
+    @Metered(when = {AFTER, EXCEPTION, FINALLY})
+    public String returnGreeting(boolean error) {
+        if (error) {
+            throw new RuntimeException("error");
+        }
         return "hello";
     }
     

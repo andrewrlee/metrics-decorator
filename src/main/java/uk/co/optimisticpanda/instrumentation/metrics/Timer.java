@@ -1,12 +1,12 @@
-package uk.co.optimisticpanda.metricsdecorator.interceptors;
+package uk.co.optimisticpanda.instrumentation.metrics;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
 import java.util.Optional;
 
-import uk.co.optimisticpanda.metricsdecorator.Interceptor;
-import uk.co.optimisticpanda.metricsdecorator.InterceptorHandlerFactory.InterceptorFactory;
+import uk.co.optimisticpanda.instrumentation.Interceptor;
+import uk.co.optimisticpanda.instrumentation.InterceptorHandlerFactory.InterceptorFactory;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer.Context;
@@ -15,15 +15,13 @@ import com.codahale.metrics.Timer.Context;
 public @interface Timer {
     public class TimerInterceptor implements Interceptor<Timer> {
         private final MetricRegistry registry;
-        private final Timer timer;
         private Context context;
 
         public static InterceptorFactory factory(MetricRegistry metricRegistry) {
-            return (annotation, delegate) -> new TimerInterceptor((Timer)annotation, metricRegistry);
+            return (annotation, delegate) -> new TimerInterceptor(metricRegistry);
         }
         
-        private TimerInterceptor(Timer timer, MetricRegistry metricRegistry) {
-            this.timer = timer;
+        private TimerInterceptor(MetricRegistry metricRegistry) {
             this.registry = metricRegistry;
         }
 
@@ -37,6 +35,5 @@ public @interface Timer {
         public void onFinally(Object delegate, Method method) {
             context.close();
         }
-        
     }
 }

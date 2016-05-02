@@ -1,4 +1,4 @@
-package uk.co.optimisticpanda.metricsdecorator;
+package uk.co.optimisticpanda.instrumentation;
 
 import static net.bytebuddy.implementation.MethodDelegation.to;
 import static net.bytebuddy.matcher.ElementMatchers.any;
@@ -9,23 +9,14 @@ import net.bytebuddy.implementation.bind.annotation.Pipe;
 import org.objenesis.ObjenesisBase;
 import org.objenesis.strategy.StdInstantiatorStrategy;
 
-import uk.co.optimisticpanda.metricsdecorator.interceptors.Metered;
-import uk.co.optimisticpanda.metricsdecorator.interceptors.Metered.MeteredInterceptor;
-import uk.co.optimisticpanda.metricsdecorator.interceptors.Timer;
-import uk.co.optimisticpanda.metricsdecorator.interceptors.Timer.TimerInterceptor;
+public class Decorator {
 
-import com.codahale.metrics.MetricRegistry;
-
-public class MetricsDecorator {
-
-    private final InterceptorHandlerFactory factory;
+   private final InterceptorHandlerFactory factory;
     
-    public MetricsDecorator(MetricRegistry metricRegistry) {
-        this.factory = new InterceptorHandlerFactory()
-            .register(Metered.class, MeteredInterceptor.factory(metricRegistry))
-            .register(Timer.class, TimerInterceptor.factory(metricRegistry));
+    public Decorator(InterceptorHandlerFactory factory) {
+        this.factory = factory;
     }
-
+    
     public <T> T decorate(T delegate) {
         Class<? extends T> clazz = new ByteBuddy().<T>subclass(delegate.getClass())
                 .method(any())
@@ -33,7 +24,7 @@ public class MetricsDecorator {
                             .appendParameterBinder(Pipe.Binder.install(Piper.class)))
                 .make()
                 .load(delegate.getClass().getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)
-                        .getLoaded();
+                .getLoaded();
         return new ObjenesisBase(new StdInstantiatorStrategy()).newInstance(clazz);
     }
 }

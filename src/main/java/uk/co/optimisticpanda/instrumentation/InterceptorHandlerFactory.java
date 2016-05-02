@@ -1,4 +1,4 @@
-package uk.co.optimisticpanda.metricsdecorator;
+package uk.co.optimisticpanda.instrumentation;
 
 import static java.util.Arrays.stream;
 import static java.util.stream.Collectors.collectingAndThen;
@@ -11,7 +11,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 
 import net.bytebuddy.implementation.bind.annotation.Origin;
 import net.bytebuddy.implementation.bind.annotation.Pipe;
@@ -38,7 +37,7 @@ public class InterceptorHandlerFactory {
 
     public static class InterceptorHandler {
         private final Map<Class<? extends Annotation>, InterceptorFactory> interceptorFactories;
-        private final ConcurrentHashMap<Class<? extends Annotation>, Interceptor<? extends Annotation>> allInterceptors = new ConcurrentHashMap<>();
+        private final Map<Class<? extends Annotation>, Interceptor<? extends Annotation>> allInterceptors = new ConcurrentHashMap<>();
         private final Object delegate;
 
         private InterceptorHandler(Map<Class<? extends Annotation>, InterceptorFactory> interceptorProviders, Object delegate) {
@@ -70,44 +69,30 @@ public class InterceptorHandlerFactory {
         private Interceptors gatherInterceptors(Method method) {
             return stream(method.getAnnotations())
                     .<AnnotationInfo>flatMap(a-> stream(a.getClass().getInterfaces()).map(iClass -> new AnnotationInfo(a, iClass)))
-                    .filter(a -> interceptorFactories.containsKey(a.getRealType()))
-                    .map(a -> createInterceptor(a, delegate))
+                    .filter(a -> interceptorFactories.containsKey(a.realType))
+                    .map(a -> getInterceptor(a, delegate))
                     .collect(collectingAndThen(toList(), Interceptors::new));
         }
 
-        private Interceptor<? extends Annotation> createInterceptor(AnnotationInfo info, Object delegate) {
-            Function<Class<? extends Annotation>, Interceptor<? extends Annotation>> f = annotation -> {
+        private Interceptor<? extends Annotation> getInterceptor(AnnotationInfo info, Object delegate) {
+            return allInterceptors.computeIfAbsent(info.realType, annotation -> {
                 InterceptorFactory factory = interceptorFactories.get(annotation);
-                Annotation ann = info.getAnnotation();
-                return factory.build(ann, delegate);
-            };
-            Interceptor<? extends Annotation> interceptor = allInterceptors.computeIfAbsent(info.getRealType(), f);
-            return interceptor;
+                return factory.build(info.annotation, delegate);
+            });
         }
-        
+
+        private static class AnnotationInfo {
+            private final Annotation annotation;
+            private final Class<? extends Annotation> realType;
+            @SuppressWarnings("unchecked")
+            private AnnotationInfo(Annotation annotation, Class<?> realType) {
+                this.annotation = annotation;
+                this.realType = (Class<? extends Annotation>) realType;
+            }
+        }
     }
     
     public interface InterceptorFactory {
         Interceptor<?> build(Annotation annotation, Object delegate);
-    }
-    
-    private static class AnnotationInfo {
-        private final Annotation annotation;
-        private final Class<? extends Annotation> realType;
-        
-        @SuppressWarnings("unchecked")
-        private AnnotationInfo(Annotation annotation, Class<?> realType) {
-            super();
-            this.annotation = annotation;
-            this.realType = (Class<? extends Annotation>) realType;
-        }
-        
-        public Class<? extends Annotation> getRealType() {
-            return realType;
-        }
-        
-        public Annotation getAnnotation() {
-            return annotation;
-        }
     }
 }

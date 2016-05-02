@@ -1,4 +1,4 @@
-package uk.co.optimisticpanda.metricsdecorator;
+package uk.co.optimisticpanda.instrumentation;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
@@ -30,9 +30,7 @@ public class Interceptors implements Interceptor<Annotation> {
 
     @Override
     public void onFinally(Object delegate, Method method) {
-        for (Interceptor<? extends Annotation> interceptor : interceptors) {
-            interceptor.onFinally(delegate, method);
-        }
+        interceptors.forEach(i -> i.onFinally(delegate, method));
     }
     
     private Optional<Object> forEach(ThrowingSupplier supplier) throws Exception {
